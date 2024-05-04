@@ -60,7 +60,7 @@ def fluid_solution_gurobi(N, W, pmf_cust, pmf_serv):
 def average_paths(Cost_paths, Queue_paths, fract = 0, plot = 0):
     Queue_paths = np.transpose( np.asarray(Queue_paths) )
     Cost_paths = np.transpose( np.asarray(Cost_paths) )
-    time_steps = len(Queue_paths[:,0])
+    time_steps = len(Queue_paths[0])
     average_queue_lengths = np.average(Queue_paths[int(time_steps*fract):,:], axis = 0)
     average_cost = np.average(Cost_paths[int(time_steps*fract):,:], axis=0)
     if plot:
@@ -173,26 +173,28 @@ def batching( time_steps, N, cust_process, serv_process, W, T ):
     return({"QP": total_queue, "CP": cost_path})
 
 
-def qc_plot( Ex, fluid_sol, avg_Q_B, avg_C_B, avg_Q_M, avg_C_M ):
+def qc_plot( Ex, fluid_sol, avg_Q_B, avg_C_B, avg_Q_M, avg_C_M, save_file =0 ):
     
     plt.figure( figsize=(10,6) ) 
     
     # C = 0 Case
     
     # C = Inf/Fluid Case
-    xlim = max( max( avg_Q_B ), max( avg_Q_M ) )
-    plt.plot([0,xlim],[fluid_sol['Cost'],fluid_sol['Cost']],linewidth = 3)
+    ylim = max( max( avg_Q_B ), max( avg_Q_M ) )
+    plt.plot([fluid_sol['Cost'],fluid_sol['Cost']],[0,ylim],linewidth = 3)
     # Batching data
-    plt.plot(avg_Q_B,avg_C_B,'x',markersize = 10, markeredgewidth=3, markeredgecolor="darkblue")
+    plt.plot(avg_C_B,avg_Q_B,'x',markersize = 10, markeredgewidth=3, markeredgecolor="darkblue")
     # Max Weight data
-    plt.plot(avg_Q_M,avg_C_M, 'go',markersize = 8)
-    plt.plot([1],[Ex],'r*',markersize = 12, markeredgewidth=3)
-    plt.xlabel("Average queue length", weight='bold',fontsize=12)
-    plt.ylabel("Average cost", weight='bold',fontsize=12)
+    plt.plot(avg_C_M, avg_Q_M,'go',markersize = 8)
+    plt.plot([Ex],[1],'r*',markersize = 12, markeredgewidth=3)
+    plt.ylabel("Average queue length", weight='bold',fontsize=12)
+    plt.xlabel("Average cost", weight='bold',fontsize=12)
     plt.title("c vs q", weight='bold',fontsize=15)
     plt.legend(['Fluid', 'Batching', 'Max-weight', 'c = 0 sol'])
     # plt.legend([ 'Batching', 'Max-weight', 'c = 0 sol'])
     plt.grid(True)
+    if save_file != 0:
+        plt.savefig(save_file,bbox_inches='tight')
     plt.show()
 
 def batching_gurobi( time_steps, N, cust_process, serv_process, W, T ):

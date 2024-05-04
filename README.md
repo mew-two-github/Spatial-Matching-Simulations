@@ -1,7 +1,6 @@
 # Simulation of Dynamic Spatial Matching of Two Sided Queues
 
 ### Short description of important files:
-Each notebook corresponds to one of the examples in the report:
 - spatial.py: Driver file for running simulations with "spatial" weight matrix. Writes the total queue and cost paths along with input parameters in a pickle file.
 - random_weights.py: Driver file for running simulations with "random" weight matrix. Writes the total queue and cost paths along with input parameters in a pickle file.
 - utils.py: Contains the core code for simulating each path and for processing output data

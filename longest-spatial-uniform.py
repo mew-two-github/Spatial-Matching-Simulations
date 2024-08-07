@@ -56,8 +56,8 @@ def gen_long_weights(N_grid):
         for j in range(N_cells):
             xpoints = [ cell_locs[i][0] + 0.5, cell_locs[i][0] - 0.5, cell_locs[j][0] + 0.5,  cell_locs[j][0] - 0.5 ]
             ypoints = [ cell_locs[i][1] + 0.5, cell_locs[i][1] - 0.5, cell_locs[j][1] + 0.5,  cell_locs[j][1] - 0.5 ]
-            Weights[i,j] = np.sqrt((max(xpoints) - min(ypoints))**2 
-                                   + (max(ypoints) - min(ypoints))**2)
+            Weights[i,j] = np.sqrt((max(xpoints) - min(xpoints))**2 
+                                    + (max(ypoints) - min(ypoints))**2)
             
     print("Spatial: longest",Weights)
 

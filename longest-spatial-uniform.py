@@ -61,11 +61,13 @@ def gen_long_weights(N_grid):
             
     print("Spatial: longest",Weights)
 
+    return Weights
+
 # Problem setup
 Nvalues = [2,3,4]
 for N in Nvalues:
     is_spatial = 1
-    W = gen_long_weights(N,is_spatial)
+    W = gen_long_weights(N)
     time_steps_M = 100000
     time_steps_B = 100000
 

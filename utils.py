@@ -5,7 +5,7 @@ import cvxpy as cp
 import gurobipy as gp
 from gurobipy import GRB
 
-def fluid_solution(N, W, pmf_cust, pmf_serv):
+def fluid_solution(N, W, pmf_cust, pmf_serv, verbose = 1):
     x = cp.Variable((N,N)) # fraction of matchings from i to j
     print(W)
     constraints = []                          
@@ -21,8 +21,9 @@ def fluid_solution(N, W, pmf_cust, pmf_serv):
 
     objective = cp.Minimize( cp.sum( cp.multiply( x , W ) ) )
     problem = cp.Problem(objective, constraints)
-    problem.solve()  
-    print(problem)
+    problem.solve()
+    if verbose:  
+        print(problem)
     return({"X": x.value, "Cost": problem.value })
 
 
@@ -94,7 +95,8 @@ def max_weight( time_steps, N, cust_process, serv_process, W, alpha ):
         objective = cp.Maximize( cp.sum( (1-alpha)*( cp.multiply( q, cp.sum(M, axis=1) ) + cp.multiply( qtilde, cp.sum(M, axis=0) ) ) )
                                 - cp.sum( alpha*cp.multiply( W,M  ) ) )
         problem  = cp.Problem(objective, constraints)         
-        problem.solve(solver="GLPK_MI")
+        # problem.solve(solver="GLPK_MI")
+        problem.solve(solver="GLPK_MI", canon_backend=cp.SCIPY_CANON_BACKEND )
         # print("q=",q)
         # print("qtilde=",qtilde)
         # print(problem)
@@ -156,7 +158,8 @@ def batching( time_steps, N, cust_process, serv_process, W, T ):
 
             objective = cp.Minimize( cp.sum( cp.multiply( W, M ) ) )
             problem  = cp.Problem(objective, constraints)         
-            problem.solve(solver="GLPK_MI")
+            # problem.solve(solver="GLPK_MI")
+            problem.solve(solver="GLPK_MI", canon_backend=cp.SCIPY_CANON_BACKEND)
             Mstar = M.value
 
         running_cost += np.sum(np.multiply(Mstar,W))
@@ -297,3 +300,15 @@ def max_weight_gurobi( time_steps, N, cust_process, serv_process, W, alpha ):
             break
 
     return({"QP": total_queue, "CP": cost_path})
+
+def minmax(average_cost_M, average_queue_M, average_cost_B, average_queue_B):
+    len_M = len(average_cost_M)
+    len_B = len(average_cost_B)
+    max_val = 0
+    for i in range(len_M):
+        shifted = np.abs(average_queue_B - average_queue_M[i])
+        idx = shifted.argmin()
+        if(max_val < average_cost_B[idx] - average_cost_M[i]):
+            max_val = average_cost_B[idx] - average_cost_M[i]
+            (cM,qM,cB,qB)= ( average_cost_M[i], average_queue_M[i], average_cost_B[idx], average_queue_B[idx] )
+    return cM, qM, cB, qB

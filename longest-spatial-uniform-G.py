@@ -69,7 +69,7 @@ for N in Nvalues:
     is_spatial = 1
     W = gen_long_weights(N)
     time_steps_M = 1000000
-    time_steps_B = 100000
+    # time_steps_B = 100000
 
     # Tbatches = np.asarray( [1,2, 3, 4, 5, 8, 10, 12, 15, 18, 20, 30, 40, 50, 60, 100  ] )
     # alpha_values = np.asarray( [0, 0.2, 0.25, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8,0.9,0.95] )

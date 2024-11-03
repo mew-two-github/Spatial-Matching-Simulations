@@ -257,6 +257,88 @@ def batching( time_steps, N, cust_process, serv_process, W, T ):
         cost_path.append(np.sum(np.multiply(Mstar,W)))
     return({"QP": total_queue, "CP": cost_path})
 
+def batching_G( time_steps, N, cust_process, serv_process, W, alpha ):
+    print("NetworkX Maxweight Running!")
+    cust_arrivals = cust_process.rvs( size = time_steps )
+    serv_arrivals = serv_process.rvs( size = time_steps )
+
+    q = np.zeros(N)
+    q[cust_arrivals[0]] = 1
+    qtilde = np.zeros(N)
+    qtilde[serv_arrivals[0]] = 1
+    Q_G = []
+    Qtilde_G = []
+    Q_G.append(q)
+    Qtilde_G.append(qtilde)
+
+    cost_path_G = [0]
+    total_queue_G = []
+    total_queue_G.append(np.sum(q))
+
+
+    for k in range(1,time_steps):
+        # Maxweight Matching
+        # print("q =",q)
+        # print("qtilde =",qtilde)
+        G = nx.DiGraph()
+        # Create a super source and super sink
+        G.add_node('super_source', demand=-sum(qtilde))
+        G.add_node('super_sink', demand=sum(q))
+
+        for i in range(N):
+            G.add_node(f'D{i}')
+            G.add_edge( f'D{i}', 'super_sink', capacity=q[i])
+
+            G.add_node(f'S{i}')
+            G.add_edge( 'super_source', f'S{i}', capacity=qtilde[i])
+
+
+        # Add edges between demand and supply nodes
+        graph_Weights = np.zeros((N,N))
+        for i in range(N):
+            for j in range(N):
+                capacity = min(q[i], qtilde[j])
+                weight = np.floor(-100*( (1-alpha)*(q[i] + qtilde[j]) - alpha*W[i][j] ))
+                if weight > 0:
+                    weight = 0
+                graph_Weights[i,j] = weight
+                # print(weight," ")
+                G.add_edge( f'S{j}', f'D{i}', capacity=capacity, weight=weight)
+        # print('\n Iteration-', k, 'graph_Weights')
+        # print(graph_Weights)
+        # Solve the max flow min cost problem
+        flow_dict = nx.max_flow_min_cost(G, 'super_source', 'super_sink', capacity='capacity', weight='weight')
+
+        Mstar = np.zeros((N,N))
+        for i in range(N):
+            for key,val in flow_dict['S'+str(i)].items():
+                if key == 'super_sink':
+                    continue
+                j = int(key[1:])
+                # print(val)
+                if graph_Weights[j,i] >= 0:
+                    val = 0
+                Mstar[j,i] = val
+        # Check arrivals
+        a = np.zeros(N)
+        atilde = np.zeros(N)
+
+        a[cust_arrivals[k]] = 1
+        atilde[serv_arrivals[k]] = 1
+        # State Update
+        # print("M=", Mstar)
+        matching_cost = np.sum(np.multiply(Mstar,W)) 
+        # print("matching cost = ", matching_cost)
+        q = q + a - np.sum(Mstar, 1)
+        qtilde = qtilde + atilde - np.sum(Mstar,0)
+        total_queue_G.append(np.sum(q))
+        cost_path_G.append(matching_cost)
+        Q_G.append(q)
+        Qtilde_G.append(qtilde)
+        
+    return({"QP": total_queue_G, "CP": cost_path_G})
+
+
 
 def qc_plot( Ex, fluid_sol, avg_Q_B, avg_C_B, avg_Q_M, avg_C_M, save_file =0 ):
     

@@ -476,3 +476,213 @@ def minmax(average_cost_M, average_queue_M, average_cost_B, average_queue_B):
             max_val = average_cost_B[idx] - average_cost_M[i]
             (cM,qM,cB,qB)= ( average_cost_M[i], average_queue_M[i], average_cost_B[idx], average_queue_B[idx] )
     return cM, qM, cB, qB
+
+def max_weight_matching( time_steps, N, cust_process, serv_process, W, alpha ):
+    print("NetworkX Maxweight Matching Running!")
+    cust_arrivals = cust_process.rvs( size = time_steps )
+    serv_arrivals = serv_process.rvs( size = time_steps )
+
+    q = np.zeros(N)
+    q[cust_arrivals[0]] = 1
+    qtilde = np.zeros(N)
+    qtilde[serv_arrivals[0]] = 1
+    Q_G = []
+    Qtilde_G = []
+    Q_G.append(q)
+    Qtilde_G.append(qtilde)
+
+    cost_path_G = [0]
+    total_queue_G = []
+    total_queue_G.append(np.sum(q))
+
+
+    for k in range(1,time_steps):
+        # Maxweight Matching
+        # print("q =",q)
+        # print("qtilde =",qtilde)
+        G = nx.Graph()
+        for i in range(N):
+            G.add_node(f'D{i}')
+            G.add_node(f'S{i}')
+
+        # Keep matching until no available matches
+
+        # Accumalate costs
+        matching_cost = 0
+
+        # Initial Match
+        for i in range(N):
+            for j in range(N):    
+                weight = np.floor(( (1-alpha)*(q[i] + qtilde[j]) - alpha*W[i][j] ))
+                if weight <= 0 or q[i] == 0 or qtilde[j] == 0:
+                    continue
+                #print(weight," ")
+                count = 0
+                G.add_edge( f'S{j}', f'D{i}', weight=weight)
+        
+        Mstar = np.zeros((N,N))
+        
+        M = nx.max_weight_matching(G)
+        for (N1,N2) in M:
+            i = int(N1[1:])
+            j = int(N2[1:])
+            if N1[0] == 'D':    
+                Mstar[i,j] = 1
+            else:
+                Mstar[j,i] = 1
+        matching_cost = np.sum(np.multiply(Mstar,W))
+        q = q - np.sum(Mstar,1)
+        qtilde = qtilde - np.sum(Mstar,0)
+
+        while np.sum(Mstar) > 0:
+            # Remove all edges from previous iteration
+            G = nx.create_empty_copy(G)
+            for i in range(N):
+                for j in range(N):    
+                    weight = np.floor( (1-alpha)*(q[i] + qtilde[j]) - alpha*W[i][j] )
+                    if weight <= 0 or q[i] == 0 or qtilde[j] == 0: 
+                        continue
+                    #print(weight," ")
+                    G.add_edge( f'S{j}', f'D{i}', weight=weight)
+            M = nx.max_weight_matching(G)
+            #print(M)
+            Mstar = np.zeros((N,N))
+            for (N1,N2) in M:
+                i = int(N1[1:])
+                j = int(N2[1:])
+                if N1[0] == 'D':    
+                    Mstar[i,j] = 1
+                else:
+                    Mstar[j,i] = 1
+            matching_cost += np.sum(np.multiply(Mstar,W))
+            q = q - np.sum(Mstar,1)
+            qtilde = qtilde - np.sum(Mstar,0)
+
+        # Check arrivals
+        a = np.zeros(N)
+        atilde = np.zeros(N)
+
+        a[cust_arrivals[k]] = 1
+        atilde[serv_arrivals[k]] = 1
+        # State Update
+        q = q + a
+        qtilde = qtilde + atilde
+        
+        total_queue_G.append(np.sum(q))
+        cost_path_G.append(matching_cost)
+        Q_G.append(q)
+        Qtilde_G.append(qtilde)
+
+        
+    return({"QP": total_queue_G, "CP": cost_path_G})
+
+def max_weight_matching_scaled( time_steps, N, cust_process, serv_process, W, alpha ):
+    print("NetworkX Maxweight Matching Running!")
+    cust_arrivals = cust_process.rvs( size = time_steps )
+    arrival_ids = np.arange(0,N,1)
+    lambda_cust = cust_process.pmf(arrival_ids)
+    serv_arrivals = serv_process.rvs( size = time_steps )
+    lambda_serv = serv_process.pmf(arrival_ids)
+
+    q = np.zeros(N)
+    q[cust_arrivals[0]] = 1
+    qtilde = np.zeros(N)
+    qtilde[serv_arrivals[0]] = 1
+    Q_G = []
+    Qtilde_G = []
+    Q_G.append(q)
+    Qtilde_G.append(qtilde)
+
+    cost_path_G = [0]
+    total_queue_G = []
+    total_queue_G.append(np.sum(q))
+
+    cust_factor = np.zeros(N)
+    serv_factor = np.zeros(N)
+    for i in range(len(cust_factor)):
+        cust_factor[i] = np.ceil(lambda_cust[i]/0.01)
+        serv_factor[i] = np.ceil(lambda_serv[i]/0.01)
+
+    print("Cust Factors", cust_factor)
+    print("Serv Factors", serv_factor)
+
+
+    for k in range(1,time_steps):
+        # Maxweight Matching
+        # print("q =",q)
+        # print("qtilde =",qtilde)
+        G = nx.Graph()
+        for i in range(N):
+            G.add_node(f'D{i}')
+            G.add_node(f'S{i}')
+
+        # Keep matching until no available matches
+
+        # Accumalate costs
+        matching_cost = 0
+
+        # Initial Match
+        for i in range(N):
+            for j in range(N):    
+                weight = np.floor(( (1-alpha)*(q[i]/cust_factor[i] + qtilde[j]/serv_factor[j]) - alpha*W[i][j] ))
+                if weight <= 0 or q[i] == 0 or qtilde[j] == 0:
+                    continue
+                #print(weight," ")
+                count = 0
+                G.add_edge( f'S{j}', f'D{i}', weight=weight)
+        
+        Mstar = np.zeros((N,N))
+        
+        M = nx.max_weight_matching(G)
+        for (N1,N2) in M:
+            i = int(N1[1:])
+            j = int(N2[1:])
+            if N1[0] == 'D':    
+                Mstar[i,j] = 1
+            else:
+                Mstar[j,i] = 1
+        matching_cost = np.sum(np.multiply(Mstar,W))
+        q = q - np.sum(Mstar,1)
+        qtilde = qtilde - np.sum(Mstar,0)
+
+        while np.sum(Mstar) > 0:
+            # Remove all edges from previous iteration
+            G = nx.create_empty_copy(G)
+            for i in range(N):
+                for j in range(N):    
+                    weight = np.floor( (1-alpha)*(q[i]/cust_factor[i] + qtilde[j]/serv_factor[j]) - alpha*W[i][j] )
+                    if weight <= 0 or q[i] == 0 or qtilde[j] == 0: 
+                        continue
+                    #print(weight," ")
+                    G.add_edge( f'S{j}', f'D{i}', weight=weight)
+            M = nx.max_weight_matching(G)
+            #print(M)
+            Mstar = np.zeros((N,N))
+            for (N1,N2) in M:
+                i = int(N1[1:])
+                j = int(N2[1:])
+                if N1[0] == 'D':    
+                    Mstar[i,j] = 1
+                else:
+                    Mstar[j,i] = 1
+            matching_cost += np.sum(np.multiply(Mstar,W))
+            q = q - np.sum(Mstar,1)
+            qtilde = qtilde - np.sum(Mstar,0)
+            
+        # Check arrivals
+        a = np.zeros(N)
+        atilde = np.zeros(N)
+
+        a[cust_arrivals[k]] = 1
+        atilde[serv_arrivals[k]] = 1
+        # State Update
+        q = q + a
+        qtilde = qtilde + atilde
+        
+        total_queue_G.append(np.sum(q))
+        cost_path_G.append(matching_cost)
+        Q_G.append(q)
+        Qtilde_G.append(qtilde)
+
+        
+    return({"QP": total_queue_G, "CP": cost_path_G})

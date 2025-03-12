@@ -8,7 +8,7 @@ import networkx as nx
 
 def fluid_solution(N, W, pmf_cust, pmf_serv, verbose = 1):
     x = cp.Variable((N,N)) # fraction of matchings from i to j
-    print(W)
+    # print(W)
     constraints = []                          
     for i in range(N):
         for j in range(N):
